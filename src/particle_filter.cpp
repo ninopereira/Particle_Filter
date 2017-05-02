@@ -63,7 +63,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
 
     // BUG
-    for (auto particle : particles){
+    for (const auto& particle : particles){
         std::cout << particle.id << ", " << particle.x <<  ", " << particle.y <<  ", " << particle.theta <<  ", " << particle.weight << std::endl;
     }
     // BUG
@@ -88,7 +88,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     default_random_engine gen;
 
 
-    for (auto particle : particles){
+    for (auto& particle : particles){
         double x_0 = particle.x;
         double y_0 = particle.y;
         double yaw_0 = particle.theta;
@@ -123,6 +123,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 }
 
+/**
+ * dataAssociation Finds which observations correspond to which landmarks (likely by using
+ *   a nearest-neighbors data association).
+ * @param predicted Vector of predicted landmark observations
+ * @param observations Vector of landmark observations
+ */
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
@@ -131,9 +137,36 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
 }
 
+void LocalToGlobal(double& x_land, double&y_land, double x_0, double y_0, double yaw_0){
+//        function [global_coords] = LocalToGlobal (~,x_local, y_local, system_x, system_y, system_theta)
+//            theta = system_theta;
+//            Rot_Mat = [cos(theta) -sin(theta); ...
+//                       sin(theta)  cos(theta)];
+//            global_coords = (Rot_Mat)*[x_local; y_local]+[system_x; system_y];
+//        end
+
+    // https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
+    // Note that you'll need to switch the minus sign in that equation to a plus to account
+    //   for the fact that the map's y-axis actually points downwards.)
+    x_land = x_land * cos(yaw_0) + y_land * sin(yaw_0) + x_0;
+    y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
+
+}
+
+
+
+/**
+ * updateWeights Updates the weights for each particle based on the likelihood of the
+ *   observed measurements.
+ * @param sensor_range Range [m] of sensor
+ * @param std_landmark[] Array of dimension 2 [standard deviation of range [m],
+ *   standard deviation of bearing [rad]]
+ * @param observations Vector of landmark observations
+ * @param map Map class containing map landmarks
+ */
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
 		std::vector<LandmarkObs> observations, Map map_landmarks) {
-	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
+    // TODO: Update the weights of each particle using a multi-variate Gaussian distribution. You can read
 	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
 	// NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
 	//   according to the MAP'S coordinate system. You will need to transform between the two systems.
@@ -144,8 +177,33 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account 
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
+
+    for (size_t iter = 0; iter < particles.size(); iter++){
+        auto& particle = particles[iter];
+        auto& weight = weights[iter];
+        weight = 1;
+        // observations are in local coordinate system
+        // translate observations to global coordinate system
+        for (auto& observation : observations){
+//            cout << "local = " << observation.x << "," << observation.y << std::endl;
+            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
+//            cout << "global = " << observation.x << "," << observation.y << std::endl;
+            // Update the weights of each particle using a multi-variate Gaussian distribution
+            //weight = weight * (exp(-1/2*(x_i-mean_i)))
+
+            // using the bivariate formulae as someone suggested on slack channel
+            // (x.x - m.x) * (x.x - m.x) / Z(0, 0) + (x.y - m.y) * (x.y - m.y) / Z(1, 1)
+             weight = weight * 1/sqrt(2.0*M_PI*std_landmark[0]*std_landmark[1])*
+             std::exp(-(std::pow(x_meas-x_mu,2.0)/(pow(std_landmark[0],2.0))+pow(y_meas-y_mu,2.0)/(pow(std_landmark[1],2.0))));
+        }
+    }
 }
 
+
+/**
+ * resample Resamples from the updated set of particles to form
+ *   the new set of particles.
+ */
 void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
