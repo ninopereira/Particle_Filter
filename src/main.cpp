@@ -77,6 +77,7 @@ int main() {
 	double total_error[3] = {0,0,0};
 	double cum_mean_error[3] = {0,0,0};
 	
+    num_time_steps=2; //BUG
 	for (int i = 0; i < num_time_steps; ++i) {
 		cout << "Time step: " << i << endl;
 		// Read in landmark observations for current time step.
@@ -88,7 +89,10 @@ int main() {
 			return -1;
 		}
 		
-		// Initialize particle filter if this is the first time step.
+        for (auto element : observations)
+            std::cout << "(x,y)=" << "( " << element.x << " , " << element.y << " )" << std::endl; //BUG
+
+        // Initialize particle filter if this is the first time step.
 		if (!pf.initialized()) {
 			n_x = N_x_init(gen);
 			n_y = N_y_init(gen);

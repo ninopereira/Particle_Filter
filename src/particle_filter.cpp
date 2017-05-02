@@ -11,13 +11,54 @@
 #include <numeric>
 
 #include "particle_filter.h"
+#include <random>
+
+using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
+    // Number of particles to draw
 
+    num_particles = 3;
+    default_random_engine gen;
+    normal_distribution<double> N_x_init(x, std[0]);
+    normal_distribution<double> N_y_init(y, std[1]);
+    normal_distribution<double> N_theta_init(theta, std[2]);
+
+    // Initialize all particles to first position
+    for (size_t iter = 0; iter < num_particles; iter ++){
+
+        // Initialise all weights to 1
+        weights.push_back(1);
+
+        Particle newParticle;
+        newParticle.id = iter;
+        // Add random Gaussian noise to each particle
+        // this is similar to what main does, we just make it here for each particle
+        double n_x = N_x_init(gen);
+        double n_y = N_y_init(gen);
+        double n_theta = N_theta_init(gen);
+
+        newParticle.x = n_x;
+        newParticle.y = n_y;
+        newParticle.theta = n_theta;
+        newParticle.weight = weights[iter];
+        particles.push_back(newParticle);
+    }
+
+    // Flag, if filter is initialized
+    is_initialized = true;
+
+
+    // BUG
+    for (auto particle : particles){
+        std::cout << particle.id << ", " << particle.x <<  ", " << particle.y <<  ", " << particle.theta <<  ", " << particle.weight << std::endl;
+    }
+
+    // BUG
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
