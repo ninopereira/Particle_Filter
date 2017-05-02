@@ -135,6 +135,13 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+
+    // find wich of the predicted landmarks (map landmarks) corresponds to each observation by compouting nearest neighbor
+    // assign the id of the predicted landmark to the observation id
+    // Note: We assume the map is complete and immutable
+    // The landmark id should match the index on the list.
+    // We assign the index of the list to make it faster to access it later on
+
 }
 
 void LocalToGlobal(double& x_land, double&y_land, double x_0, double y_0, double yaw_0){
@@ -150,7 +157,6 @@ void LocalToGlobal(double& x_land, double&y_land, double x_0, double y_0, double
     //   for the fact that the map's y-axis actually points downwards.)
     x_land = x_land * cos(yaw_0) + y_land * sin(yaw_0) + x_0;
     y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
-
 }
 
 
@@ -178,6 +184,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
 
+    // should we use sensor range to filter out invalid observation readings?
+
+    dataAssociation(map_landmarks.landmark_list, observations);
+
     for (size_t iter = 0; iter < particles.size(); iter++){
         auto& particle = particles[iter];
         auto& weight = weights[iter];
@@ -188,13 +198,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 //            cout << "local = " << observation.x << "," << observation.y << std::endl;
             LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
 //            cout << "global = " << observation.x << "," << observation.y << std::endl;
-            // Update the weights of each particle using a multi-variate Gaussian distribution
-            //weight = weight * (exp(-1/2*(x_i-mean_i)))
 
-            // using the bivariate formulae as someone suggested on slack channel
-            // (x.x - m.x) * (x.x - m.x) / Z(0, 0) + (x.y - m.y) * (x.y - m.y) / Z(1, 1)
-             weight = weight * 1/sqrt(2.0*M_PI*std_landmark[0]*std_landmark[1])*
-             std::exp(-(std::pow(x_meas-x_mu,2.0)/(pow(std_landmark[0],2.0))+pow(y_meas-y_mu,2.0)/(pow(std_landmark[1],2.0))));
+            int ldm_id = observation.id; // previously determined by data association
+            double x = observation.x - map_landmarks.landmark_list[ldm_id].x;
+            double y = observation.y - map_landmarks.landmark_list[ldm_id].y;
+            // Update the weights of each particle using a multi-variate Gaussian distribution
+            // using the bivariate formula
+            double std_x = std_landmark[0];
+            double std_y = std_landmark[1];
+            double var_x = std_x * std_x;
+            double var_y = std_y * std_y;
+            weight = weight * 1/(2.0 * M_PI * std_x * std_y) * exp(- x * x / (2 * var_x) - y * y / (2 * var_y) );
         }
     }
 }
