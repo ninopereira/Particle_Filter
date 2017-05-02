@@ -77,7 +77,8 @@ int main() {
 	double total_error[3] = {0,0,0};
 	double cum_mean_error[3] = {0,0,0};
 	
-    num_time_steps=2; //BUG
+    cout << "num_time_steps =" << num_time_steps << std::endl;
+//    num_time_steps=200; //BUG
 	for (int i = 0; i < num_time_steps; ++i) {
 		cout << "Time step: " << i << endl;
 		// Read in landmark observations for current time step.

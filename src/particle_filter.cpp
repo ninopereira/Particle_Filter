@@ -15,6 +15,15 @@
 
 using namespace std;
 
+/**
+ * init Initializes particle filter by initializing particles to Gaussian
+ *   distribution around first position and all the weights to 1.
+ * @param x Initial x position [m] (simulated estimate from GPS)
+ * @param y Initial y position [m]
+ * @param theta Initial orientation [rad]
+ * @param std[] Array of dimension 3 [standard deviation of x [m], standard deviation of y [m]
+ *   standard deviation of yaw [rad]]
+ */
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
@@ -57,15 +66,60 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     for (auto particle : particles){
         std::cout << particle.id << ", " << particle.x <<  ", " << particle.y <<  ", " << particle.theta <<  ", " << particle.weight << std::endl;
     }
-
     // BUG
 }
 
+
+/**
+ * prediction Predicts the state for the next time step
+ *   using the process model. (See motion model)
+ * @param delta_t Time between time step t and t+1 in measurements [s]
+ * @param std_pos[] Array of dimension 3 [standard deviation of x [m], standard deviation of y [m]
+ *   standard deviation of yaw [rad]]
+ * @param velocity Velocity of car from t to t+1 [m/s]
+ * @param yaw_rate Yaw rate of car from t to t+1 [rad/s]
+ */
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
 	// TODO: Add measurements to each particle and add random Gaussian noise.
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+
+    default_random_engine gen;
+
+
+    for (auto particle : particles){
+        double x_0 = particle.x;
+        double y_0 = particle.y;
+        double yaw_0 = particle.theta;
+        double x_f;
+        double y_f;
+        double yaw_f;
+        // Motion Model - Bicycle Model
+        if (fabs(yaw_rate) < 0.001){ // if yaw_rate is zero
+            x_f = x_0 + velocity * delta_t * cos(yaw_0);
+            y_f = y_0 + velocity * delta_t * sin(yaw_0);
+            yaw_f = yaw_0;
+        }
+        else{ // otherwise
+            x_f = x_0 + velocity / yaw_rate * (sin(yaw_0 + yaw_rate * delta_t ) - sin(yaw_0));
+            y_f = y_0 + velocity / yaw_rate * (cos(yaw_0) - cos(yaw_0 + yaw_rate * delta_t ));
+            yaw_f = yaw_0 + yaw_rate * delta_t;
+        }
+
+        // Add random Gaussian noise
+        normal_distribution<double> N_x_init(x_0, std_pos[0]);
+        normal_distribution<double> N_y_init(y_0, std_pos[1]);
+        normal_distribution<double> N_theta_init(yaw_0, std_pos[2]);
+
+        double n_x = N_x_init(gen);
+        double n_y = N_y_init(gen);
+        double n_theta = N_theta_init(gen);
+
+        particle.x = x_f + n_x;
+        particle.y = y_f + n_y;
+        particle.theta = yaw_f + n_theta;
+    }
 
 }
 
