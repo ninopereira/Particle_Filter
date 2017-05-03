@@ -155,7 +155,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predictedObs, std:
     }
 }
 
-void LocalToGlobal(double& x_land, double&y_land, double x_0, double y_0, double yaw_0){
+void LocalToGlobal(double& x_land, double& y_land, double x_0, double y_0, double yaw_0){
 //        function [global_coords] = LocalToGlobal (~,x_local, y_local, system_x, system_y, system_theta)
 //            theta = system_theta;
 //            Rot_Mat = [cos(theta) -sin(theta); ...
@@ -166,8 +166,8 @@ void LocalToGlobal(double& x_land, double&y_land, double x_0, double y_0, double
     // https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
     // Note that you'll need to switch the minus sign in that equation to a plus to account
     //   for the fact that the map's y-axis actually points downwards.)
-    x_land = x_land * cos(yaw_0) + x_land * sin(yaw_0) + x_0;
-    y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
+    x_land = x_land * cos(yaw_0) + y_land * sin(yaw_0) + x_0;
+    y_land = x_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
 }
 
 
@@ -220,9 +220,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                 observableLandmark.y = landmark_s.y_f;
 //                std::cout << "============================observableLandmark: " << observableLandmark.x << "," << observableLandmark.y << std::endl;
 
-                //BUG ???
-                x_land = x_land * cos(yaw_0) + x_land * sin(yaw_0) + x_0;
-                y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
+//                //BUG ???
+//                x_land = x_land * cos(yaw_0) + x_land * sin(yaw_0) + x_0;
+//                y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
 
                 predicted_landmarkObs.push_back(observableLandmark);
             }
@@ -236,7 +236,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         // translate observations to global coordinate system
         for (auto& observation : observations){
 //            cout << "local = " << observation.x << "," << observation.y << std::endl;
-//            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
+            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
 //            cout << "global = " << observation.x << "," << observation.y << std::endl;
 
             int ldm_id = observation.id; // previously determined by data association
