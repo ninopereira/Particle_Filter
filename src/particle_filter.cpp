@@ -31,7 +31,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
     // Number of particles to draw
 
-    num_particles = 1000;
+    num_particles = 200;
     default_random_engine gen;
     normal_distribution<double> N_x_init(x, std[0]);
     normal_distribution<double> N_y_init(y, std[1]);
@@ -102,25 +102,24 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
             yaw_f = yaw_0;
         }
         else{ // otherwise
-            x_f = x_0 + velocity / yaw_rate * (sin(yaw_0 + yaw_rate * delta_t ) - sin(yaw_0));
-            y_f = y_0 + velocity / yaw_rate * (cos(yaw_0) - cos(yaw_0 + yaw_rate * delta_t ));
+            x_f = x_0 + (velocity / yaw_rate) * (sin(yaw_0 + yaw_rate * delta_t ) - sin(yaw_0));
+            y_f = y_0 + (velocity / yaw_rate) * (cos(yaw_0) - cos(yaw_0 + yaw_rate * delta_t ));
             yaw_f = yaw_0 + yaw_rate * delta_t;
         }
 
         // Add random Gaussian noise
-        normal_distribution<double> N_x_init(x_0, std_pos[0]);
-        normal_distribution<double> N_y_init(y_0, std_pos[1]);
-        normal_distribution<double> N_theta_init(yaw_0, std_pos[2]);
+        normal_distribution<double> N_x_init(x_f, std_pos[0]);
+        normal_distribution<double> N_y_init(y_f, std_pos[1]);
+        normal_distribution<double> N_theta_init(yaw_f, std_pos[2]);
 
         double n_x = N_x_init(gen);
         double n_y = N_y_init(gen);
         double n_theta = N_theta_init(gen);
 
-        particle.x = x_f + n_x;
-        particle.y = y_f + n_y;
-        particle.theta = yaw_f + n_theta;
+        particle.x = n_x;
+        particle.y = n_y;
+        particle.theta = n_theta;
     }
-
 }
 
 /**
@@ -167,7 +166,7 @@ void LocalToGlobal(double& x_land, double&y_land, double x_0, double y_0, double
     // https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
     // Note that you'll need to switch the minus sign in that equation to a plus to account
     //   for the fact that the map's y-axis actually points downwards.)
-    x_land = x_land * cos(yaw_0) + y_land * sin(yaw_0) + x_0;
+    x_land = x_land * cos(yaw_0) + x_land * sin(yaw_0) + x_0;
     y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
 }
 
@@ -220,6 +219,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                 observableLandmark.x = landmark_s.x_f;
                 observableLandmark.y = landmark_s.y_f;
 //                std::cout << "============================observableLandmark: " << observableLandmark.x << "," << observableLandmark.y << std::endl;
+
+                //BUG ???
+                x_land = x_land * cos(yaw_0) + x_land * sin(yaw_0) + x_0;
+                y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
+
                 predicted_landmarkObs.push_back(observableLandmark);
             }
         }
@@ -232,7 +236,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         // translate observations to global coordinate system
         for (auto& observation : observations){
 //            cout << "local = " << observation.x << "," << observation.y << std::endl;
-            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
+//            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
 //            cout << "global = " << observation.x << "," << observation.y << std::endl;
 
             int ldm_id = observation.id; // previously determined by data association
@@ -245,12 +249,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                     double y = observation.y - landmark.y;
 
                     // Update the weights of each particle using a multi-variate Gaussian distribution
-                    // using the bivariate formula instead
                     double std_x = std_landmark[0];
                     double std_y = std_landmark[1];
                     double var_x = std_x * std_x;
                     double var_y = std_y * std_y;
-                    weight = weight * 1/(2.0 * M_PI * std_x * std_y) * exp(- x * x / (2 * var_x) - y * y / (2 * var_y) );
+                    weight = weight * (exp (-1/2 * (x*x/var_x + y*y/var_y)) ) / (sqrt(2 * M_PI * var_x * var_y));
+                    // using the bivariate formula instead
+//                    weight = weight * 1/(2.0 * M_PI * std_x * std_y) * exp(- x * x / (2 * var_x) - y * y / (2 * var_y) );
+
+                    particle.weight = weight;
                     break; // stop looping through the map landmarks, as we've found the one
                 }
             }
