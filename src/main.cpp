@@ -25,14 +25,12 @@ int main() {
 	double max_translation_error = 1; // Max allowable translation error to pass [m]
 	double max_yaw_error = 0.05; // Max allowable yaw error [rad]
 
-
-
 	// Start timer.
 	int start = clock();
 	
 	//Set up parameters here
 	double delta_t = 0.1; // Time elapsed between measurements [sec]
-	double sensor_range = 50; // Sensor range [m]
+    double sensor_range = 50; // Sensor range [m]
 	
 	/*
 	 * Sigmas - just an estimate, usually comes from uncertainty of sensor, but
@@ -78,8 +76,10 @@ int main() {
 	double cum_mean_error[3] = {0,0,0};
 	
     cout << "num_time_steps =" << num_time_steps << std::endl;
-//    num_time_steps=200; //BUG
-	for (int i = 0; i < num_time_steps; ++i) {
+
+//    num_time_steps=3; //BUG
+
+    for (int i = 0; i < num_time_steps; ++i) {
 		cout << "Time step: " << i << endl;
 		// Read in landmark observations for current time step.
 		ostringstream file;
@@ -90,8 +90,9 @@ int main() {
 			return -1;
 		}
 		
-        for (auto element : observations)
-            std::cout << "(x,y)=" << "( " << element.x << " , " << element.y << " )" << std::endl; //BUG
+        // BUG
+//        for (auto element : observations)
+//            std::cout << "(x,y)=" << "( " << element.x << " , " << element.y << " )" << std::endl; //BUG
 
         // Initialize particle filter if this is the first time step.
 		if (!pf.initialized()) {
