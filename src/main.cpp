@@ -77,7 +77,7 @@ int main() {
 	
     cout << "num_time_steps =" << num_time_steps << std::endl;
 
-//    num_time_steps=3; //BUG
+    num_time_steps=3; //BUG
 
     for (int i = 0; i < num_time_steps; ++i) {
 		cout << "Time step: " << i << endl;

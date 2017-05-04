@@ -31,7 +31,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
     // Number of particles to draw
 
-    num_particles = 200;
+    num_particles = 2;
     default_random_engine gen;
     normal_distribution<double> N_x_init(x, std[0]);
     normal_distribution<double> N_y_init(y, std[1]);
@@ -140,18 +140,28 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predictedObs, std:
     // Note: We assume the map is complete and immutable
     // The observation id should match the id of a landmark on the list.
     // We assign the id of the object
+    cout << "Before dataAssociation" << endl;
+    for (auto& observation : observations){
+        cout << observation.id << endl;
+    }
+
     for (auto& observation : observations){
         int nearestObsId = 0;
         double closestDist = 1000000; // very large number
-        for (auto& predObs : predictedObs){
+        for (auto const& predObs : predictedObs){
             double distance = sqrt(pow(predObs.x-observation.x,2)+pow(predObs.y-observation.y,2));
-//            cout << "distance = " << distance << endl;
+            cout << "id= " <<  predObs.id << "  distance = " << distance << endl;
             if (distance < closestDist){
                 nearestObsId = predObs.id;
+                closestDist = distance;
             }
         }
         observation.id = nearestObsId;
 //        cout << "observation.id =" << observation.id << std::endl;
+    }
+    cout << "========= AFTER dataAssociation" << endl;
+    for (auto& observation : observations){
+        cout << observation.id << endl;
     }
 }
 
@@ -204,57 +214,45 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         auto& particle = particles[iter];
         auto& weight = weights[iter];
         weight = 1;
-//        std::cout << "particle.id = " << particle.id << std::endl;
+        std::cout << "particle.id = " << particle.id << "(" << particle.x << "," << particle.y << ")" << std::endl;
 
-        /// 1) we should use sensor_range to filter the predicted landmark observations
+        /// 1) use sensor_range to filter the predicted landmark observations
         std::vector<LandmarkObs> predicted_landmarkObs;
 
-        for (auto landmark_s : map_landmarks.landmark_list){
+        for (auto const& landmark_s : map_landmarks.landmark_list){
             double distance = sqrt(pow((particle.x-landmark_s.x_f),2) + pow((particle.y-landmark_s.y_f),2));
-//            cout << "++++++++++++++++++ distance = " << distance << endl;
             if (distance <= sensor_range){
                 // need to convert single_landmark_s to landmarkObs
                 LandmarkObs observableLandmark;
                 observableLandmark.id = landmark_s.id_i;
                 observableLandmark.x = landmark_s.x_f;
                 observableLandmark.y = landmark_s.y_f;
-//                std::cout << "============================observableLandmark: " << observableLandmark.x << "," << observableLandmark.y << std::endl;
-
-//                //BUG ???
-//                x_land = x_land * cos(yaw_0) + x_land * sin(yaw_0) + x_0;
-//                y_land = y_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
-
                 predicted_landmarkObs.push_back(observableLandmark);
             }
         }
 
-//        /// 2) associate landmarks
-//        dataAssociation(predicted_landmarkObs, observations);
-
-        // convert local observations to global observations relative to this particle
+        /// 2) convert local observations to global observations relative to this particle
         std::vector<LandmarkObs> global_observations;
-        for (auto observation : observations){
-//            cout << "local = " << observation.x << "," << observation.y << std::endl;
+        for (auto observation : observations){ // creates a copy of the observation
             LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
             global_observations.push_back(observation);
-//            cout << "global = " << observation.x << "," << observation.y << std::endl;
         }
 
+        /// 3) associate landmarks
         dataAssociation(predicted_landmarkObs, global_observations);
 
-        /// 3) compute the weight of each particle
+        /// 4) compute the weight of each particle
         // observations are in local coordinate system
         // translate observations to global coordinate system
-        for (auto& observation : global_observations){
+        for (auto const& global_observation : global_observations){
 
-            int ldm_id = observation.id; // previously determined by data association
+            int ldm_id = global_observation.id; // previously determined by data association
 
             // search for this id in the predicted_landmarkObs list:
-            for (auto matching_landmark : predicted_landmarkObs){
-                if (matching_landmark.id == observation.id){
-                    const LandmarkObs& landmark = matching_landmark;
-                    double x = observation.x - landmark.x;
-                    double y = observation.y - landmark.y;
+            for (auto const& landmark : predicted_landmarkObs){
+                if (landmark.id == global_observation.id){
+                    double x = global_observation.x - landmark.x;
+                    double y = global_observation.y - landmark.y;
 
                     // Update the weights of each particle using a multi-variate Gaussian distribution
                     double std_x = std_landmark[0];
