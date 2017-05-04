@@ -166,8 +166,8 @@ void LocalToGlobal(double& x_land, double& y_land, double x_0, double y_0, doubl
     // https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
     // Note that you'll need to switch the minus sign in that equation to a plus to account
     //   for the fact that the map's y-axis actually points downwards.)
-    x_land = x_land * cos(yaw_0) + y_land * sin(yaw_0) + x_0;
-    y_land = x_land * sin(yaw_0) - y_land * cos(yaw_0) + y_0;
+    x_land = x_land * cos(yaw_0) - y_land * sin(yaw_0) + x_0;
+    y_land = x_land * sin(yaw_0) + y_land * cos(yaw_0) + y_0;
 }
 
 
@@ -228,16 +228,24 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             }
         }
 
-        /// 2) associate landmarks
-        dataAssociation(predicted_landmarkObs, observations);
+//        /// 2) associate landmarks
+//        dataAssociation(predicted_landmarkObs, observations);
+
+        // convert local observations to global observations relative to this particle
+        std::vector<LandmarkObs> global_observations;
+        for (auto observation : observations){
+//            cout << "local = " << observation.x << "," << observation.y << std::endl;
+            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
+            global_observations.push_back(observation);
+//            cout << "global = " << observation.x << "," << observation.y << std::endl;
+        }
+
+        dataAssociation(predicted_landmarkObs, global_observations);
 
         /// 3) compute the weight of each particle
         // observations are in local coordinate system
         // translate observations to global coordinate system
-        for (auto& observation : observations){
-//            cout << "local = " << observation.x << "," << observation.y << std::endl;
-            LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
-//            cout << "global = " << observation.x << "," << observation.y << std::endl;
+        for (auto& observation : global_observations){
 
             int ldm_id = observation.id; // previously determined by data association
 
