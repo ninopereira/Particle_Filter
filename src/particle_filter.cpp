@@ -31,7 +31,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
     // Number of particles to draw
 
-    num_particles = 2;
+    num_particles = 200;
     default_random_engine gen;
     normal_distribution<double> N_x_init(x, std[0]);
     normal_distribution<double> N_y_init(y, std[1]);
@@ -140,28 +140,20 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predictedObs, std:
     // Note: We assume the map is complete and immutable
     // The observation id should match the id of a landmark on the list.
     // We assign the id of the object
-    cout << "Before dataAssociation" << endl;
-    for (auto& observation : observations){
-        cout << observation.id << endl;
-    }
+
 
     for (auto& observation : observations){
         int nearestObsId = 0;
         double closestDist = 1000000; // very large number
         for (auto const& predObs : predictedObs){
             double distance = sqrt(pow(predObs.x-observation.x,2)+pow(predObs.y-observation.y,2));
-            cout << "id= " <<  predObs.id << "  distance = " << distance << endl;
+
             if (distance < closestDist){
                 nearestObsId = predObs.id;
                 closestDist = distance;
             }
         }
         observation.id = nearestObsId;
-//        cout << "observation.id =" << observation.id << std::endl;
-    }
-    cout << "========= AFTER dataAssociation" << endl;
-    for (auto& observation : observations){
-        cout << observation.id << endl;
     }
 }
 
@@ -173,9 +165,15 @@ void LocalToGlobal(double& x_land, double& y_land, double x_0, double y_0, doubl
 //            global_coords = (Rot_Mat)*[x_local; y_local]+[system_x; system_y];
 //        end
 
-    // https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-    // Note that you'll need to switch the minus sign in that equation to a plus to account
+    // NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
+    //   according to the MAP'S coordinate system. You will need to transform between the two systems.
+    //   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
+    //   The following is a good resource for the theory:
+    //   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
+    //   and the following is a good resource for the actual equation to implement (look at equation
+    //   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account
     //   for the fact that the map's y-axis actually points downwards.)
+    //   http://planning.cs.uiuc.edu/node99.html
     x_land = x_land * cos(yaw_0) - y_land * sin(yaw_0) + x_0;
     y_land = x_land * sin(yaw_0) + y_land * cos(yaw_0) + y_0;
 }
@@ -207,14 +205,16 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 //  In the updateWeights function for each particle we have to:
 //    1) create a vector of predicted landmarks filtered according to the sensor range
-//    2) associate each observation to a landmark in that filtered vector of predicted landmarks
-//    3) compute the weight of each particle given the error
+//    2) convert local observations to global observations relative to this particle
+//    3) associate each observation to a landmark in that filtered vector of predicted landmarks
+//    4) compute the weight of each particle given the error
+
 
     for (size_t iter = 0; iter < particles.size(); iter++){
         auto& particle = particles[iter];
         auto& weight = weights[iter];
-        weight = 1;
-        std::cout << "particle.id = " << particle.id << "(" << particle.x << "," << particle.y << ")" << std::endl;
+        weight = 1.0;
+//        std::cout << "particle.id = " << particle.id << "(" << particle.x << "," << particle.y << ")" << std::endl;
 
         /// 1) use sensor_range to filter the predicted landmark observations
         std::vector<LandmarkObs> predicted_landmarkObs;
@@ -234,8 +234,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         /// 2) convert local observations to global observations relative to this particle
         std::vector<LandmarkObs> global_observations;
         for (auto observation : observations){ // creates a copy of the observation
+//            cout << "local = " << observation.x << "," << observation.y << endl;
             LocalToGlobal(observation.x, observation.y, particle.x, particle.y, particle.theta);
             global_observations.push_back(observation);
+//            cout << "global = " << observation.x << "," << observation.y << endl <<endl;
         }
 
         /// 3) associate landmarks
@@ -245,8 +247,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         // observations are in local coordinate system
         // translate observations to global coordinate system
         for (auto const& global_observation : global_observations){
-
-            int ldm_id = global_observation.id; // previously determined by data association
 
             // search for this id in the predicted_landmarkObs list:
             for (auto const& landmark : predicted_landmarkObs){
@@ -259,9 +259,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                     double std_y = std_landmark[1];
                     double var_x = std_x * std_x;
                     double var_y = std_y * std_y;
-                    weight = weight * (exp (-1/2 * (x*x/var_x + y*y/var_y)) ) / (sqrt(2 * M_PI * var_x * var_y));
+                    weight = weight * (exp (-0.5 * (x*x/var_x + y*y/var_y)) ) / (sqrt(2 * M_PI * var_x * var_y));
                     // using the bivariate formula instead
-//                    weight = weight * 1/(2.0 * M_PI * std_x * std_y) * exp(- x * x / (2 * var_x) - y * y / (2 * var_y) );
+//                    weight = weight * 1.0/(2.0 * M_PI * std_x * std_y) * exp(- x * x / (2 * var_x) - y * y / (2 * var_y) );
 
                     particle.weight = weight;
                     break; // stop looping through the map landmarks, as we've found the one
@@ -269,6 +269,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             }
         }
     }
+//    cout << "+++++++++++++++  weights content AFTER ++++++++++++++++++++" << endl;
+//    for (auto const& weight : weights){
+//        cout << weight << endl;
+//    }
 }
 
 
