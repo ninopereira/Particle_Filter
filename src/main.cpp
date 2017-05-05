@@ -131,6 +131,17 @@ int main() {
 				highest_weight = particles[i].weight;
 				best_particle = particles[i];
 			}
+
+            /// write all particles to file (100 particles)
+            ofstream output_data ("data/output_data.txt", std::ofstream::out | std::ofstream::app);
+
+            if (output_data.is_open())
+            {
+                output_data << particles[i].x << " " << particles[i].y << endl;
+                output_data.close();
+            }
+            else cout << "Unable to open file";
+
 		}
 		double *avg_error = getError(gt[i].x, gt[i].y, gt[i].theta, best_particle.x, best_particle.y, best_particle.theta);
 

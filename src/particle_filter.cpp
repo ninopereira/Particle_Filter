@@ -31,17 +31,18 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
     // Number of particles to draw
 
-    num_particles = 200;
+    num_particles = 100;
     default_random_engine gen;
     normal_distribution<double> N_x_init(x, std[0]);
     normal_distribution<double> N_y_init(y, std[1]);
     normal_distribution<double> N_theta_init(theta, std[2]);
+    double initial_weight = 1;
 
     // Initialize all particles to first position
     for (size_t iter = 0; iter < num_particles; iter ++){
 
         // Initialise all weights to 1
-        weights.push_back(1);
+        weights.push_back(initial_weight);
 
         Particle newParticle;
         newParticle.id = iter;
@@ -54,7 +55,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
         newParticle.x = n_x;
         newParticle.y = n_y;
         newParticle.theta = n_theta;
-        newParticle.weight = weights[iter];
+        newParticle.weight = initial_weight;
         particles.push_back(newParticle);
     }
 
@@ -135,7 +136,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predictedObs, std:
 	//   implement this method and use it as a helper during the updateWeights phase.
 
 
-    // find wich of the predicted landmarks (map landmarks) corresponds to each observation by compouting nearest neighbor
+    // find wich of the predicted landmarks (map landmarks) corresponds to each observation by computing nearest neighbor
     // assign the id of the landmark on the list of predicted landmarks to the observation id
     // Note: We assume the map is complete and immutable
     // The observation id should match the id of a landmark on the list.
@@ -259,7 +260,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                     double std_y = std_landmark[1];
                     double var_x = std_x * std_x;
                     double var_y = std_y * std_y;
-                    weight = weight * (exp (-0.5 * (x*x/var_x + y*y/var_y)) ) / (sqrt(2 * M_PI * var_x * var_y));
+                    weight = weight * (exp (-0.5 * (x*x/var_x + y*y/var_y)) ) / (2 * M_PI * std_x * std_y);
                     // using the bivariate formula instead
 //                    weight = weight * 1.0/(2.0 * M_PI * std_x * std_y) * exp(- x * x / (2 * var_x) - y * y / (2 * var_y) );
 
