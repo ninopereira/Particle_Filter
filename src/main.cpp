@@ -15,8 +15,6 @@
 
 using namespace std;
 
-
-
 int main() {
 	
 	// parameters related to grading.
@@ -77,8 +75,6 @@ int main() {
 	
     cout << "num_time_steps =" << num_time_steps << std::endl;
 
-//    num_time_steps=10; //BUG
-
     for (int i = 0; i < num_time_steps; ++i) {
 		cout << "Time step: " << i << endl;
 		// Read in landmark observations for current time step.
@@ -89,10 +85,6 @@ int main() {
 			cout << "Error: Could not open observation file " << i+1 << endl;
 			return -1;
 		}
-		
-        // BUG
-//        for (auto element : observations)
-//            std::cout << "(x,y)=" << "( " << element.x << " , " << element.y << " )" << std::endl; //BUG
 
         // Initialize particle filter if this is the first time step.
 		if (!pf.initialized()) {
@@ -132,15 +124,15 @@ int main() {
 				best_particle = particles[i];
 			}
 
-            /// write all particles to file (100 particles)
-            ofstream output_data ("data/output_data.txt", std::ofstream::out | std::ofstream::app);
+//            /// write all particles to file for debug (100 particles)
+//            ofstream output_data ("data/output_data.txt", std::ofstream::out | std::ofstream::app);
 
-            if (output_data.is_open())
-            {
-                output_data << particles[i].x << " " << particles[i].y << endl;
-                output_data.close();
-            }
-            else cout << "Unable to open file";
+//            if (output_data.is_open())
+//            {
+//                output_data << particles[i].x << " " << particles[i].y << endl;
+//                output_data.close();
+//            }
+//            else cout << "Unable to open file";
 
 		}
 		double *avg_error = getError(gt[i].x, gt[i].y, gt[i].theta, best_particle.x, best_particle.y, best_particle.theta);
